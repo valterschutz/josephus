@@ -1,34 +1,33 @@
 all_soldiers = {}
-
 Bullet = {
     ["pos"] = {0, 0},
     ["vel"] = {0, 0},
-    ["stopped"] = true,  -- Probably unnecessary variable
-    ["radius"] = 20  -- Bullets are represented by circles
+    -- ["stopped"] = true,  -- Probably unnecessary variable
+    ["radius"] = 5  -- Bullets are represented by circles
 }
 
 function Bullet:update(dt)
     -- Euler method
-    if not self.stopped then
-        self.pos[1] = self.pos[1] + self.vel[1]*dt
-        self.pos[2] = self.pos[2] + self.vel[2]*dt
-    end
+    -- if not self.stopped then
+    self.pos[1] = self.pos[1] + self.vel[1]*dt
+    self.pos[2] = self.pos[2] + self.vel[2]*dt
+    -- end
 end
 
-function Bullet:start(vel)
-    self.vel = vel
-    self.stopped = false
-end
+-- function Bullet:start(vel)
+--     self.vel = vel
+--     self.stopped = false
+-- end
 
-function Bullet:stop()
-    -- Run this method when the bullet hits a soldier
-    self.vel[1] = 0
-    self.vel[2] = 0
-    self.stopped = true
-end
+-- function Bullet:stop()
+--     -- Run this method when the bullet hits a soldier
+--     self.vel[1] = 0
+--     self.vel[2] = 0
+--     self.stopped = true
+-- end
 
-function Bullet:new(pos)
-    t = {["pos"] = pos}
+function Bullet:new(pos,vel)
+    t = {["pos"] = {pos[1],pos[2]}, ["vel"] = {vel[1],vel[2]}}
     setmetatable(t, self)
     self.__index = self
     return t
@@ -39,24 +38,28 @@ Soldier = {
     ["pos"] = {0, 0},
     ["aim"] = {0, 0},
     ["alive"] = true,
-    ["bullet"] = Bullet:new{["pos"] = {0, 0}, ["vel"] = {0, 0}},
-    ["radius"] = 50,  -- Soldiers are represented by circles
+    -- ["bullet"] = Bullet:new{["pos"] = {0, 0}, ["vel"] = {0, 0}},
+    ["radius"] = 10,  -- Soldiers are represented by circles
     ["all_soldiers_ref"] = all_soldiers
 }
 
 function Soldier:update(dt)
-    self.bullet:update(dt)
-
     -- Small helper function, computes distance between two points
     function dist(pos1, pos2)
         return math.sqrt((pos1[1] - pos2[1])^2 + (pos1[2] - pos2[2])^2)
     end
 
-    -- Check if bullet has hit anyone, ignore self of course
-    for _, soldier in ipairs(self.all_soldiers_ref) do
-        if soldier ~= self and dist(self.bullet.pos, soldier.pos) - (self.bullet.radius + soldier.radius) < 0 then
-            soldier:kill()
-            self.bullet:stop()
+    if self.bullet then
+        self.bullet:update(dt)
+        if self.bullet then
+          -- Check if bullet has hit anyone, ignore self of course
+          for _, soldier in ipairs(self.all_soldiers_ref) do
+              if soldier ~= self and soldier.alive and dist(self.bullet.pos, soldier.pos) - (self.bullet.radius + soldier.radius) < 0 then
+                  soldier:kill()
+                  self.bullet = nil
+                  break
+              end
+          end
         end
     end
 end
@@ -67,7 +70,8 @@ end
 
 function Soldier:shoot(speed)
     local bullet_vel = {self.aim[1]*speed/math.sqrt(2), self.aim[2]*speed/math.sqrt(2)}
-    self.bullet:start(bullet_vel)
+    self.bullet = Bullet:new(self.pos, bullet_vel)
+    -- self.bullet:start(bullet_vel)
 end
 
 function Soldier:aim_at(soldier)
@@ -77,7 +81,7 @@ function Soldier:aim_at(soldier)
 end
 
 function Soldier:new(pos)
-    t = {["pos"] = pos, ["bullet"] = Bullet:new({pos[1], pos[2]})}
+    t = {["pos"] = pos}
     setmetatable(t, self)
     self.__index = self
     all_soldiers[#all_soldiers + 1] = t

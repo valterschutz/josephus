@@ -1,25 +1,29 @@
 Soldier = require "lib"
 
 function love.load()
+    K = 1  -- How many soldiers to jump
+    BULLET_SPEED = 1000
     WIDTH = 800
     HEIGHT = 800
+    N_SOLDIERS = 80
     --
     -- A transform for normal cartesian coordinates and origin in the center
     transform = love.math.newTransform( WIDTH/2, HEIGHT/2, 0, 1, -1, 0, 0, 0, 0 )
 
-    -- Create 10 soldiers, positioned in a ring
+    -- Create 10 Soldiers, positioned in a ring
     -- First divide the angle 2*pi into 10 parts
-    soldiers = {}
+    Soldiers = {}
     local radius = 300
-    for theta = 0, 2*math.pi-2*math.pi/10, 2*math.pi/10 do
+    for theta = 0, 2*math.pi-2*math.pi/N_SOLDIERS, 2*math.pi/N_SOLDIERS do
         local x = radius*math.cos(theta)
         local y = radius*math.sin(theta)
-        soldiers[#soldiers+1] = Soldier:new({x, y})
+        Soldiers[#Soldiers+1] = Soldier:new({x, y})
     end
 
-    soldiers[8]:aim_at(soldiers[2])
-    soldiers[8]:shoot(100)
-    curr_soldier = soldiers[8]
+    Curr_soldier_index = 1
+    To_shoot_soldier_index = 2
+    Soldiers[Curr_soldier_index]:aim_at(Soldiers[To_shoot_soldier_index])
+    Soldiers[Curr_soldier_index]:shoot(BULLET_SPEED)
 
     -- Initialize window
     love.window.setMode(WIDTH,HEIGHT)
@@ -27,7 +31,16 @@ function love.load()
 end
 
 function love.update(dt)
-    curr_soldier:update(dt)
+    Soldiers[Curr_soldier_index]:update(dt)
+
+    if not Soldiers[Curr_soldier_index].bullet then
+        Curr_soldier_index = next_alive_soldier(Curr_soldier_index,1)
+        To_shoot_soldier_index = next_alive_soldier(Curr_soldier_index,K)
+        Soldiers[Curr_soldier_index]:aim_at(Soldiers[To_shoot_soldier_index])
+        Soldiers[Curr_soldier_index]:shoot(BULLET_SPEED)
+    end
+
+
 end
 
 function love.draw()
@@ -38,8 +51,8 @@ function love.draw()
     -- Apply transform
     love.graphics.applyTransform(transform)
 
-    -- Draw soldiers
-    for _, soldier in ipairs(soldiers) do
+    -- Draw Soldiers
+    for _, soldier in ipairs(Soldiers) do
         if soldier.alive then
             love.graphics.setColor(1,1,1)
         else
@@ -49,9 +62,17 @@ function love.draw()
     end
 
     -- Draw bullet (if there is one) for current soldier
-    if not curr_soldier.bullet.stopped then
+    if Soldiers[Curr_soldier_index].bullet then
         love.graphics.setColor(0,1,0)
-        love.graphics.circle("fill", curr_soldier.bullet.pos[1], curr_soldier.bullet.pos[2], curr_soldier.bullet.radius)
+        love.graphics.circle("fill", Soldiers[Curr_soldier_index].bullet.pos[1], Soldiers[Curr_soldier_index].bullet.pos[2], Soldiers[Curr_soldier_index].bullet.radius)
     end
 end
 
+function next_alive_soldier(soldier_index,step)
+    -- TODO: implement step
+    local next_soldier_index = (soldier_index % #Soldiers) + 1
+    while not Soldiers[next_soldier_index].alive do
+      next_soldier_index = (next_soldier_index % #Soldiers) + 1
+    end
+    return next_soldier_index
+end
